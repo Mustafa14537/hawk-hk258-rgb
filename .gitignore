@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Derleme ciktilari (derle.py ile yeniden uretilir)
+Dagitim/
+build/
+dist/
+*.spec
+
+# Yerel arac ayarlari
+.claude/

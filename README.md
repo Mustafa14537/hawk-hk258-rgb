@@ -109,3 +109,8 @@ aa 55 cc 33 | KOMUT | veri (59 bayt)
 | `kur.py` | Kurulum / kaldırma adımları |
 | `derle.py` | Tek dosya kurulum exe'sini derler (PyInstaller) |
 | `make_icon.py` | `app.ico` / `app.png` logosunu üretir |
+
+## Lisans
+
+[MIT](LICENSE) — dilediğiniz gibi kullanabilir, değiştirebilir ve paylaşabilirsiniz; lisans metnini
+korumanız yeterli. Yazılım "olduğu gibi" sunulur, hiçbir garanti verilmez.

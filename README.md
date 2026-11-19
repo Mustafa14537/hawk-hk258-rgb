@@ -2,7 +2,7 @@
 
 <h1 align="center">HK258 RGB</h1>
 
-<p align="center">Hawk HK258 klavye için RGB kontrol paneli — resmi sürücüsü olmayan klavyeye tersine mühendislikle yazıldı.</p>
+<p align="center">Hawk HK258 klavye ve Hawk HM220 mouse için kontrol paneli — resmi sürücüsü olmayan klavyeye tersine mühendislikle yazıldı.</p>
 
 > **Resmi değildir.** Bu proje Hawk Gaming ile bağlantılı değildir ve onlar tarafından desteklenmez.
 > Klavyenin USB protokolü, üreticinin yazılımı olmadığı için deneme yoluyla çözülmüştür. Kullanım riski size aittir.
@@ -11,11 +11,27 @@
 
 ## Özellikler
 
+- **Ana ekran:** klavye ve mouse kartları, pil durumlarıyla. Karta tıklayınca o cihazın ayarları
+  animasyonla açılır (Esc ya da mouse'un geri tuşu ana ekrana döner)
+
+**Klavye (HK258)**
+
 - **4 mod:** Sabit renk, Nefes, Renk döngüsü ve klavyenin kendi gökkuşağı efekti
 - Renk çarkı, hazır renkler, hex kodu girişi, parlaklık ve efekt hızı ayarı
 - Klavyenin canlı önizlemesi (LCD ekranı ve ses düğmesiyle)
 - **USB kablosu ve 2.4G alıcısı** ile çalışır; kablo takılıp çıkarılınca kendiliğinden geçiş yapar
 - Pil yüzdesi ve bağlantı türü göstergesi
+
+**Mouse (HM220)**
+
+- Pil yüzdesi, şarj durumu, bağlantı (2.4G / kablolu); son bilinen pil değeri hatırlanır
+- **DPI kademeleri:** 5 kademenin her birini 100–12000 DPI arası ayarlama, aktif kademeyi seçme
+- **Raporlama hızı:** 125 / 250 / 500 / 1000 Hz (kablolu modda mouse hep 1000 Hz çalışır)
+- Ayarlar mouse'un **kendi hafızasına** yazılır; uygulama kapalıyken de geçerli kalır
+- Mouse'un DPI tuşuna basınca panel anında güncellenir
+
+**Genel**
+
 - **Windows açılışında** sistem tepsisinde sessizce başlar; kapatınca tepside çalışmaya devam eder
 - Tek kopya: uygulama zaten açıksa ikinci kez açılmaz, mevcut panel öne gelir
 - Kurulum sihirbazı (kurma / güncelleme / kaldırma)
@@ -29,6 +45,12 @@
 | Bluetooth | — | Desteklenmiyor (denenmedi) |
 
 Aynı Shinetek denetleyicisini kullanan başka klavyelerde de çalışabilir, ama denenmedi.
+
+| Mouse bağlantısı | USB kimliği | Not |
+|---|---|---|
+| 2.4G alıcısı | `1D57:FA60` ("HM220 2.4G") | Mouse 5 sn hareketsiz kalınca uyur; ayar okuma/yazma için biraz oynatmak gerekir |
+| USB kablosu | `1D57:2027` ("HM220", Beken) | Kablo takılınca mouse ayrı bir cihaz olarak görünür |
+| Bluetooth | — | Ayar kanalı yok |
 
 ## Kurulum
 
@@ -98,11 +120,31 @@ aa 55 cc 33 | KOMUT | veri (59 bayt)
 - Nefes ve renk döngüsü efektleri programda hesaplanıp klavyeye sürekli gönderilir (~6 kare/sn).
 - Diğer komutlar sessizce yok sayılıyor ya da görünür bir etki yapmıyor; tam liste bilinmiyor.
 
+### Mouse (HM220)
+
+Mouse protokolü [hawk-hub-unofficial](https://github.com/WinTone01/hawk-hub-unofficial) projesinin
+protokol belgesinden, PAW3311 DPI tablosu [attack-shark-x11-driver](https://github.com/HarukaYamamoto0/attack-shark-x11-driver)
+projesinden alınmıştır (ikisi de MIT lisanslı). Okuma akışı, DPI çerçevesi ve checksum bu projede HM220
+üzerinde yeniden doğrulandı.
+
+USB arayüzü 2'de iki HID koleksiyonu var:
+
+- **Olaylar** (Usage Page `0x000A`, input): `03 5c <tür> <p1> <p2>`. Tür `40` pil
+  (`p1`: 1 pilde, 2 dolu, 3 şarj oluyor; `p2`: %), `10` DPI tuşu (`p1`: yeni kademe), `50` komut onayı.
+- **Ayarlar** (Usage Page `0x000B`, feature): okumak için `A0 <rapor> <uzunluk> 00 01 00 00 00` gönderilir,
+  ~250 ms sonra `A0` okunur (`a0 01` = izin), ardından rapor okunur. `0x04` DPI kademeleri
+  (16 bit toplam checksum), `0x06` raporlama hızı (`06 09 01 v 255-v …`, `v = 1000 / Hz`).
+
+Program yazmadan önce mouse'taki güncel ayarı okur, yalnızca değişen alanları değiştirir, onay bekler ve
+sonra tekrar okuyup doğrular. 2.4G alıcısı mouse uyurken saatlerce paket göndermeyebildiği için
+"mouse kullanılıyor mu" bilgisi Windows Raw Input ile alınır (yalnızca son hareket zamanı, hareket verisi saklanmaz).
+
 ## Dosyalar
 
 | Dosya | Açıklama |
 |---|---|
 | `hk258_rgb.py` | Sürücü: protokol, keepalive, pil takibi, komut satırı |
+| `hm220.py` | HM220 mouse: pil / bağlantı takibi, DPI ve raporlama hızı okuma-yazma |
 | `hk258_panel.py` | Panel uygulaması (pywebview), sistem tepsisi, tek kopya, Windows açılışı |
 | `panel.html` | Panel arayüzü |
 | `HK258 RGB Kurulum.pyw` | Kurulum sihirbazı (tkinter) |

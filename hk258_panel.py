@@ -6,6 +6,9 @@ Calistirmak:  pythonw hk258_panel.py            (ya da derlenmis "HK258 RGB.exe"
               pythonw hk258_panel.py --gizli    (pencere acmadan, sistem tepsisinde baslar)
 Gereken paketler:  python -m pip install hidapi pywebview pystray pillow
 
+Ana ekranda klavye ve mouse kartlari (pil durumlariyla) gorunur; karta tiklayinca o cihazin ayarlari acilir.
+Hawk HM220 mouse icin: pil, DPI kademeleri ve raporlama hizi (hm220.py).
+
 Modlar: sabit renk, nefes, renk dongusu, klavyenin kendi efekti (gokkusagi).
 USB kablosuyla da 2.4G alicisiyla da calisir (hangisi takiliysa).
 Klavye tek renk destekledigi icin nefes ve dongu efektleri bu programda hesaplanip
@@ -24,6 +27,7 @@ from ctypes import wintypes
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import hk258_rgb as kb  # noqa: E402
+import hm220  # noqa: E402
 
 APP_NAME = "HK258 RGB"
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -151,12 +155,13 @@ class SingleInstance:
 class Controller:
     """Panelin durumu + klavyeye ne gonderilecegi."""
 
-    def __init__(self, state_file=kb.CONFIG, keeper=None, autostart_key=RUN_KEY):
+    def __init__(self, state_file=kb.CONFIG, keeper=None, autostart_key=RUN_KEY, mouse=None):
         self.state_file = state_file
         self.autostart_key = autostart_key
         self.state = dict(DEFAULTS)
         self._load()
         self.keeper = keeper or kb.ColorKeeper()
+        self.mouse = mouse if mouse is not None else hm220.MouseWatcher()
         self._stop = threading.Event()
         self.apply()
         threading.Thread(target=self._battery_loop, daemon=True).start()
@@ -258,6 +263,7 @@ class Controller:
             "battery": self.keeper.battery_level,
             "presets": PRESETS,
             "autostart": get_autostart(self.autostart_key),
+            "mouse": self.mouse.snapshot(),
         }
 
     def _battery_loop(self):
@@ -268,6 +274,7 @@ class Controller:
     def close(self):
         self._stop.set()
         self.keeper.close()
+        self.mouse.close()
 
 
 class Api:
@@ -303,6 +310,24 @@ class Api:
     def set_autostart(self, enabled):
         set_autostart(bool(enabled), self._ctrl.autostart_key)
         return self._ctrl.snapshot()
+
+    # ---- mouse (Hawk HM220): bu cagrilar mouse uyuyorsa birkac saniye surebilir
+    def mouse_read(self):
+        return self._mouse_call(self._ctrl.mouse.read_settings)
+
+    def mouse_apply(self, stages, active, polling=None):
+        return self._mouse_call(lambda: self._ctrl.mouse.apply_settings(
+            stages=[int(v) for v in stages], active=int(active),
+            polling=int(polling) if polling else None))
+
+    @staticmethod
+    def _mouse_call(fn):
+        try:
+            return {"ok": True, "settings": fn()}
+        except hm220.MouseError as e:
+            return {"ok": False, "error": str(e)}
+        except Exception as e:  # beklenmeyen: paneli dusurme, mesaj goster
+            return {"ok": False, "error": f"Beklenmeyen hata: {e}"}
 
     def minimize(self):
         self._app.window.minimize()
